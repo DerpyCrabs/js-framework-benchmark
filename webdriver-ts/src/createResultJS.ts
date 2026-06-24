@@ -20,6 +20,7 @@ let args: any = yargs(process.argv)
   .help("help")
   .string("runner")
   .default("runner", "puppeteer")
+  .array("framework")
   .string("browser").argv;
 
 console.log("args", args);
@@ -47,7 +48,11 @@ let benchmarkOptions: BenchmarkOptions = {
 let resultsDirectory = args.browser ? "./results_client_" + args.browser : "./results";
 
 async function main() {
-  let frameworks = await initializeFrameworks(benchmarkOptions);
+  let allArgs = args._.length <= 2 ? [] : args._.slice(2);
+  let frameworkArgument: string[] = args.framework ? args.framework : allArgs;
+  let matchesDirectoryArg = (directoryName: string) =>
+    frameworkArgument.length === 0 || frameworkArgument.some((arg: string) => arg == directoryName);
+  let frameworks = await initializeFrameworks(benchmarkOptions, matchesDirectoryArg);
 
   let resultJS = "import {RawResult} from './Common';\n\nexport const results: RawResult[]=[";
 

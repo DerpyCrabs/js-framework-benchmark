@@ -1,0 +1,17 @@
+{
+  "name": "js-framework-benchmark-closkell",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Closkell implementation for js-framework-benchmark",
+  "js-framework-benchmark": {
+    "frameworkVersion": "0.1.0",
+    "frameworkHomeURL": "",
+    "language": "Closkell"
+  },
+  "scripts": {
+    "dev": "node build.mjs",
+    "build-prod": "node build.mjs"
+  },
+  "license": "MIT"
+}

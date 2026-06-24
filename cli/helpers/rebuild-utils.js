@@ -18,6 +18,28 @@ function runCommand(command, cwd) {
   execSync(command, { stdio: "inherit", cwd });
 }
 
+function runInstall(frameworkPath, useCi) {
+  if (!useCi) {
+    runCommand("npm install --ignore-scripts", frameworkPath);
+    return;
+  }
+
+  try {
+    runCommand("npm ci --ignore-scripts", frameworkPath);
+  } catch (error) {
+    console.log("npm ci failed. Refreshing package-lock.json and retrying npm ci.");
+    runCommand("npm install --package-lock-only --ignore-scripts", frameworkPath);
+    runCommand("npm ci --ignore-scripts", frameworkPath);
+  }
+}
+
+function buildCommand(packageJSONPath) {
+  const packageJSON = JSON.parse(fs.readFileSync(packageJSONPath, "utf8"));
+  if (packageJSON.scripts?.["build-prod"]) return "npm run build-prod";
+  if (packageJSON.scripts?.build) return "npm run build";
+  return null;
+}
+
 /**
  * Delete specified files in the framework directory
  * @param {string} frameworkPath
@@ -73,10 +95,13 @@ export function rebuildFramework(framework, useCi) {
 
   deleteFrameworkFiles(frameworkPath, filesToDelete);
 
-  const installCmd = `npm ${useCi ? "ci" : "install"} --ignore-scripts`;
-  runCommand(installCmd, frameworkPath);
+  runInstall(frameworkPath, useCi);
 
-  const buildCmd = "npm run build-prod";
+  const buildCmd = buildCommand(packageJSONPath);
+  if (!buildCmd) {
+    console.log(`WARN: skipping build for ${framework} since package.json has no build-prod or build script`);
+    return true;
+  }
   runCommand(buildCmd, frameworkPath);
   return true;
 }

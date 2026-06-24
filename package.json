@@ -22,6 +22,10 @@
     "install-local": "npm run install-webdriver-ts && npm run install-webdriver-ts-results && npm run install-server",
     "rebuild": "node cli.js rebuild-single -f",
     "rebuild-ci": "node cli.js rebuild-single --ci -f",
+    "rebuild-selected": "node cli.js rebuild-single --ci -f keyed/closkell keyed/solid keyed/react-hooks keyed/vue keyed/angular-cf keyed/dioxus keyed/leptos keyed/yew keyed/wasm-bindgen",
+    "bench-selected": "cd webdriver-ts && cross-env LANG=\"en_US.UTF-8\" node dist/benchmarkRunner.js --runner playwright keyed/closkell keyed/solid keyed/react-hooks keyed/vue keyed/angular-cf keyed/dioxus keyed/leptos keyed/yew keyed/wasm-bindgen",
+    "results-selected": "cd webdriver-ts && node dist/createResultJS.js keyed/closkell keyed/solid keyed/react-hooks keyed/vue keyed/angular-cf keyed/dioxus keyed/leptos keyed/yew keyed/wasm-bindgen && cd .. && cd webdriver-ts-results && npm run build",
+    "bench-selected-results": "npm run bench-selected && npm run results-selected",
     "zip": "node cli.js zip",
     "format": "prettier . \"!(broken-frameworks|frameworks)/**/*\" -w",
     "lint": "eslint webdriver-ts webdriver-ts-results cli server"

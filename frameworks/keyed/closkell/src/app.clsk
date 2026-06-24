@@ -1,0 +1,252 @@
+(type Row
+  {:id Number
+   :label String})
+
+(type State
+  {:rows (Vector Row)
+   :selected (Option Number)
+   :nextId Number})
+
+(type Msg
+  (Union
+    {:kind :run}
+    {:kind :runlots}
+    {:kind :add}
+    {:kind :update}
+    {:kind :clear}
+    {:kind :swaprows}
+    {:kind :select :id Number}
+    {:kind :delete :id Number}))
+
+(type InitResult
+  [State (Cmd Msg)])
+
+(type UpdateResult
+  [State (Cmd Msg)])
+
+(ann init (Fn [] InitResult))
+(ann update (Fn [State Msg] UpdateResult))
+(ann view (Fn [State] Html))
+
+(def adjectives
+  ["pretty"
+   "large"
+   "big"
+   "small"
+   "tall"
+   "short"
+   "long"
+   "handsome"
+   "plain"
+   "quaint"
+   "clean"
+   "elegant"
+   "easy"
+   "angry"
+   "crazy"
+   "helpful"
+   "mushy"
+   "odd"
+   "unsightly"
+   "adorable"
+   "important"
+   "inexpensive"
+   "cheap"
+   "expensive"
+   "fancy"])
+
+(def colours
+  ["red"
+   "yellow"
+   "blue"
+   "green"
+   "pink"
+   "brown"
+   "purple"
+   "brown"
+   "white"
+   "black"
+   "orange"])
+
+(def nouns
+  ["table"
+   "chair"
+   "house"
+   "bbq"
+   "desk"
+   "car"
+   "pony"
+   "cookie"
+   "sandwich"
+   "burger"
+   "pizza"
+   "mouse"
+   "keyboard"])
+
+(defn none []
+  {:kind :none})
+
+(defn init []
+  [{:rows []
+    :selected nil
+    :nextId 1}
+   (none)])
+
+(defn pick [items seed]
+  (nth items (mod seed (count items))))
+
+(defn row-label [id]
+  (str (pick adjectives id)
+       " "
+       (pick colours (* id 3))
+       " "
+       (pick nouns (* id 7))))
+
+(defn build-rows [start count]
+  (map (range start (+ start count))
+       (fn [id]
+         {:id id
+          :label (row-label id)})))
+
+(defn replace-rows [model next-id count]
+  (merge model
+         {:rows (build-rows next-id count)
+          :selected nil
+          :nextId (+ next-id count)}))
+
+(defn append-rows [model next-id count]
+  (merge model
+         {:rows (reduce (build-rows next-id count)
+                        model.rows
+                        (fn [rows row] (conj rows row)))
+          :selected nil
+          :nextId (+ next-id count)}))
+
+(defn update-row-labels [rows]
+  (map-indexed rows
+               (fn [row index]
+                 (if (= (mod index 10) 0)
+                     (assoc row :label (str row.label " !!!"))
+                     row))))
+
+(defn remove-row [rows id]
+  (filter rows (fn [row] (not (= row.id id)))))
+
+(defn swap-benchmark-rows [rows]
+  (if (> (count rows) 998)
+      (let [second-row (nth rows 1)
+            nine-nine-nine-row (nth rows 998)]
+        (map-indexed rows
+                     (fn [row index]
+                       (if (= index 1)
+                           nine-nine-nine-row
+                           (if (= index 998)
+                               second-row
+                               row)))))
+      rows))
+
+(defn update [state msg]
+  (match msg
+    {:kind :run}
+      [(replace-rows state state.nextId 1000) (none)]
+
+    {:kind :runlots}
+      [(replace-rows state state.nextId 10000) (none)]
+
+    {:kind :add}
+      [(append-rows state state.nextId 1000) (none)]
+
+    {:kind :update}
+      [(merge state
+              {:rows (update-row-labels state.rows)
+               :selected nil})
+       (none)]
+
+    {:kind :clear}
+      [(merge state
+              {:rows []
+               :selected nil})
+       (none)]
+
+    {:kind :swaprows}
+      [(merge state {:rows (swap-benchmark-rows state.rows)}) (none)]
+
+    {:kind :select :id id}
+      [(merge state {:selected id}) (none)]
+
+    {:kind :delete :id id}
+      [(merge state
+              {:rows (remove-row state.rows id)
+               :selected (if (= state.selected id) nil state.selected)})
+       (none)]
+
+    _ [state (none)]))
+
+(defn view [state]
+  #html <div class="container">
+          <div class="jumbotron">
+            <div class="row">
+              <div class="col-md-6">
+                <h1>Closkell-"keyed"</h1>
+              </div>
+              <div class="col-md-6">
+                <div class="row">
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="run"
+                            on:click={{:kind :run}}>Create 1,000 rows</button>
+                  </div>
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="runlots"
+                            on:click={{:kind :runlots}}>Create 10,000 rows</button>
+                  </div>
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="add"
+                            on:click={{:kind :add}}>Append 1,000 rows</button>
+                  </div>
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="update"
+                            on:click={{:kind :update}}>Update every 10th row</button>
+                  </div>
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="clear"
+                            on:click={{:kind :clear}}>Clear</button>
+                  </div>
+                  <div class="col-sm-6 smallpad">
+                    <button type="button"
+                            class="btn btn-primary btn-block"
+                            id="swaprows"
+                            on:click={{:kind :swaprows}}>Swap Rows</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <table class="table table-hover table-striped test-data">
+            <tbody>
+              {(for [row state.rows :key row.id]
+                 #html <tr class={(if (= state.selected row.id) "danger" "")}>
+                         <td class="col-md-1">{row.id}</td>
+                         <td class="col-md-4">
+                           <a on:click={{:kind :select :id row.id}}>{row.label}</a>
+                         </td>
+                         <td class="col-md-1">
+                           <a on:click={{:kind :delete :id row.id}}>
+                             <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                           </a>
+                         </td>
+                         <td class="col-md-6"></td>
+                       </tr>)}
+            </tbody>
+          </table>
+          <span class="preloadicon glyphicon glyphicon-remove" aria-hidden="true"></span>
+        </div>)
