@@ -1,6 +1,7 @@
 (type Row
   {:id Number
-   :label String})
+   :label String
+   :selected Bool})
 
 (type State
   {:rows (Vector Row)
@@ -106,7 +107,8 @@
   (map (range start (+ start count))
        (fn [id]
          {:id id
-          :label (row-label id)})))
+          :label (row-label id)
+          :selected false})))
 
 (defn replace-rows [model next-id count]
   (merge model
@@ -114,10 +116,19 @@
           :selected nil
           :nextId (+ next-id count)}))
 
+(defn clear-row-selection [rows]
+  (map rows
+       (fn [row]
+         (if row.selected
+             (assoc row :selected false)
+             row))))
+
 (defn append-rows [model next-id count]
   (merge model
          {:rows (reduce (build-rows next-id count)
-                        model.rows
+                        (if (some? model.selected)
+                            (clear-row-selection model.rows)
+                            model.rows)
                         (fn [rows row] (conj rows row)))
           :selected nil
           :nextId (+ next-id count)}))
@@ -125,12 +136,24 @@
 (defn update-row-labels [rows]
   (map-indexed rows
                (fn [row index]
-                 (if (= (mod index 10) 0)
-                     (assoc row :label (str row.label " !!!"))
+                 (if (or (= (mod index 10) 0) row.selected)
+                     (merge row
+                            {:label (if (= (mod index 10) 0)
+                                        (str row.label " !!!")
+                                        row.label)
+                             :selected false})
                      row))))
 
 (defn remove-row [rows id]
   (filter rows (fn [row] (not (= row.id id)))))
+
+(defn select-row [rows id]
+  (map rows
+       (fn [row]
+         (let [next-selected (= row.id id)]
+           (if (= row.selected next-selected)
+               row
+               (assoc row :selected next-selected))))))
 
 (defn swap-benchmark-rows [rows]
   (if (> (count rows) 998)
@@ -172,7 +195,10 @@
       [(merge state {:rows (swap-benchmark-rows state.rows)}) (none)]
 
     {:kind :select :id id}
-      [(merge state {:selected id}) (none)]
+      [(merge state
+              {:rows (select-row state.rows id)
+               :selected id})
+       (none)]
 
     {:kind :delete :id id}
       [(merge state
@@ -234,7 +260,7 @@
           <table class="table table-hover table-striped test-data">
             <tbody>
               {(for [row state.rows :key row.id]
-                 #html <tr class={(if (= state.selected row.id) "danger" "")}>
+                 #html <tr class={(if row.selected "danger" "")}>
                          <td class="col-md-1">{row.id}</td>
                          <td class="col-md-4">
                            <a on:click={{:kind :select :id row.id}}>{row.label}</a>
